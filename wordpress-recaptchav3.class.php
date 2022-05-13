@@ -11,14 +11,53 @@
 
         function __construct() {            
             add_action('admin_menu', array(&$this, 'registerConfigCm'));
+            add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts'));
+            add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts'));
+
+            $this->ContactFormConfigureRecaptchaV3();
+        }        
+
+        //Contact Form
+        function ContactFormConfigureRecaptchaV3() {
+            add_action( 'wpcf7_init', array(&$this, 'ContactFormAddRecaptchaV3Tag') );
+            add_filter( 'wpcf7_spam', array(&$this, 'ContactFormVerifyResponse'), 9, 2 );
+        }
+        function ContactFormAddRecaptchaV3Tag() {
+            wpcf7_add_form_tag('recaptchav3', array(&$this, 'ContactFormShowRecaptchaV3Tag') );
+        }
+        function ContactFormShowRecaptchaV3Tag() {
+            return '<input type="hidden" class="g-recaptcha-response" name="_wpcf7_recaptcha_response">';
+        } 
+        function ContactFormVerifyResponse( $spam, $submission ) {
+            if ( $spam ) {
+                return $spam;
+            }
+
+            $token = isset( $_POST['_wpcf7_recaptcha_response'] )
+                ? trim( $_POST['_wpcf7_recaptcha_response'] ) : '';
+
+            if ( $this->verifyReCaptcha( $token ) ) { // Human
+                $spam = false;
+            } else { // Bot
+                $spam = true;
+                $submission->add_spam_log( array(
+                    'agent' => 'recaptcha',
+                    'reason' => __(
+                        'reCAPTCHA response token is invalid.',
+                        'contact-form-7'
+                    ),
+                ) );
+            }
+
+            return $spam;
         }
 
+        //Panel Config
         function registerConfigCm() {
             $this->createOptions();
-            add_options_page( 'reCAPTCHA v3', 'reCAPTCHA v3', 'manage_options', $this->pageSlug, array(&$this, 'displayRecaptchaV3Submenu'));
+            add_options_page( 'reCAPTCHA v3', 'reCAPTCHA v3', 'manage_options', $this->pageSlug, array(&$this, 'displayRecaptchaV3Menu'));
         }            
-        function displayRecaptchaV3Submenu() {
-            $this->enqueueScripts();
+        function displayRecaptchaV3Menu() {
         
             echo '<div class="wrap recaptchav3-configuracoes">
                     <img width="130" height="145" class="dashboard-image" src="'.WORDPRESS_RECAPTCHA_V3_URL.'assets/images/admin-dashboard.svg" alt="Menu administrativo"/>
@@ -35,7 +74,6 @@
                     </form>
                   </div>';
         }
-
         function createOptions() {
             add_settings_section( $this->sectionSlug, '', '', $this->pageSlug );
 
@@ -79,14 +117,63 @@
                 esc_attr( $value )
             );
         }
-        function enqueueScripts() {
-            // Adding js in the footer
-            wp_enqueue_script( 'recaptchav3-js', WORDPRESS_RECAPTCHA_V3_URL . 'assets/script/recaptchav3-script.js', array(), "1.0.0", true );
+        function adminEnqueueScripts() {
+            // js
+            wp_enqueue_script( 'admin-recaptchav3-js', WORDPRESS_RECAPTCHA_V3_URL . 'assets/script/admin-recaptchav3-script.js', array(), "1.0.0", true );
             wp_enqueue_media();
           
-            // Register admin stylesheet
-            wp_enqueue_style( 'recaptchav3-css', WORDPRESS_RECAPTCHA_V3_URL . 'assets/style/recaptchav3-style.css', array(), "1.0.0", 'all' );
+            // stylesheet
+            wp_enqueue_style( 'admin-recaptchav3-css', WORDPRESS_RECAPTCHA_V3_URL . 'assets/style/admin-recaptchav3-style.css', array(), "1.0.0", 'all' );
+        }
+        function getSiteKeyOption() {
+            return esc_attr( get_option( $this->optionSiteKeySlug ) );
+        }
+        function getSecretKeyOption() {
+            return esc_attr( get_option( $this->optionSecretKeySlug ) );
+        }
+        function haveCredentials() {
+            if ($this->getSiteKeyOption() && $this->getSecretKeyOption()) {
+                return true;
+            }
+
+            return false;
+        }
+
+        //User scripts
+        function userEnqueueScripts() {
+            // js
+            if ($this->haveCredentials()) {
+
+                add_action( 'wp_head', function() {
+                    echo "<script>
+        
+                        var captcha_site_key = '".$this->getSiteKeyOption()."';
+                    
+                    </script>";
+                });
+
+                wp_enqueue_script( 'recaptchav3-js', 'https://www.google.com/recaptcha/api.js?render='.$this->getSiteKeyOption(), array(), "1.0.0", false );
+                wp_enqueue_script( 'user-recaptchav3-js', WORDPRESS_RECAPTCHA_V3_URL . 'assets/script/user-recaptchav3-script.js', array('recaptchav3-js'), "1.0.0", true );
+            }
         }
         
+        //Service
+        function verifyReCaptcha($recaptchaCode){
+            $postdata = http_build_query(["secret"=>$this->getSecretKeyOption(),"response"=>$recaptchaCode]);
+
+
+            $opts = ['http' =>
+                [
+                    'method'  => 'POST',
+                    'header'  => 'Content-type: application/x-www-form-urlencoded',
+                    'content' => $postdata
+                ]
+            ];
+            $context  = stream_context_create($opts);
+            $result = file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $context);
+            $check = json_decode($result);
+
+            return $check->success;
+        }
 
     }
