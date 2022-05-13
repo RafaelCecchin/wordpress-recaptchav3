@@ -2,22 +2,22 @@
 
     class wordpress_recaptchav3 {
         
-        public $pageSlug = 'recaptchav3';
-        public $sectionSlug = 'recaptchav3-section';
-        public $groupSlug = 'recaptchav3-group';
-
-        public $optionSiteKeySlug = 'recaptchav3-sitekey';
-        public $optionSecretKeySlug = 'recaptchav3-secretkey';
+        private $pageSlug = 'recaptchav3';
+        private $sectionSlug = 'recaptchav3-section';
+        private $groupSlug = 'recaptchav3-group';
+        
+        private $optionSiteKeySlug = 'recaptchav3-sitekey';
+        private $optionSecretKeySlug = 'recaptchav3-secretkey';
 
         function __construct() {            
             add_action('admin_menu', array(&$this, 'registerConfigCm'));
         }
-        
-        public function registerConfigCm() {
+
+        function registerConfigCm() {
             $this->createOptions();
             add_options_page( 'reCAPTCHA v3', 'reCAPTCHA v3', 'manage_options', $this->pageSlug, array(&$this, 'displayRecaptchaV3Submenu'));
-        }    
-        public function displayRecaptchaV3Submenu() {
+        }            
+        function displayRecaptchaV3Submenu() {
             $this->enqueueScripts();
         
             echo '<div class="wrap recaptchav3-configuracoes">
@@ -35,6 +35,7 @@
                     </form>
                   </div>';
         }
+
         function createOptions() {
             add_settings_section( $this->sectionSlug, '', '', $this->pageSlug );
 
