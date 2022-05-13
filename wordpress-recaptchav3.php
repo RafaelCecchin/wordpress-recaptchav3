@@ -12,6 +12,8 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  **/
 
+define("WORDPRESS_RECAPTCHA_V3_URL", plugin_dir_url(__FILE__));
+
 include 'wordpress-recaptchav3.class.php';
 
 $objRecaptchaV3 = new wordpress_recaptchav3();
