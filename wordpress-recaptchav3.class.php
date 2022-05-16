@@ -14,8 +14,10 @@
             add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts') );
             add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts') );
 
-            $this->ContactFormConfigureRecaptchaV3();
-            $this->CommentsConfigureRecaptchaV3();
+            if ($this->haveCredentials()) {
+                $this->ContactFormConfigureRecaptchaV3();
+                $this->CommentsConfigureRecaptchaV3();
+            }  
         }        
 
         //Contact Form
