@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Plugin Name:       Wordpress Recaptchav3
+ * Plugin Name:       Wordpress reCAPTCHA v3
  * Description:       Adicionar reCAPTCHA v3 no formulário de comentários e CF7.
  * Version:           1.0
  * Requires at least: 5.4
@@ -11,7 +11,7 @@
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  **/
-
+define("WORDPRESS_RECAPTCHA_V3_BASENAME",  plugin_basename( __FILE__ ));
 define("WORDPRESS_RECAPTCHA_V3_URL", plugin_dir_url(__FILE__));
 
 include 'wordpress-recaptchav3.class.php';

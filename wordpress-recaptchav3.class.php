@@ -10,27 +10,36 @@
         private $optionSecretKeySlug = 'recaptchav3-secretkey';
 
         function __construct() {            
+            
             add_action( 'admin_menu', array(&$this, 'registerConfigCm') );
             add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts') );
             add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts') );
+            add_action( 'admin_init', array(&$this, 'adminNotice') );
+            add_filter( "plugin_action_links_".WORDPRESS_RECAPTCHA_V3_BASENAME, array(&$this, 'plugin_add_settings_link'), 10, 1 );
+            
 
-            if ($this->haveCredentials()) {
-                $this->ContactFormConfigureRecaptchaV3();
-                $this->CommentsConfigureRecaptchaV3();
-            }  
+            $this->configureAllForms();
         }        
 
+        //Init
+        function configureAllForms() {
+            if ($this->haveCredentials()) {
+                $this->contactFormConfigureRecaptchaV3();
+                $this->commentsConfigureRecaptchaV3();
+            }            
+        }
+        
         //Contact Form
-        function ContactFormConfigureRecaptchaV3() {  
+        function contactFormConfigureRecaptchaV3() {  
             if (defined( 'WPCF7_PLUGIN' )) {
-                add_action( 'wpcf7_init', array(&$this, 'ContactFormAddRecaptchaV3Input') );
-                add_filter( 'wpcf7_spam', array(&$this, 'ContactFormVerifyResponse'), 9, 2 );
+                add_action( 'wpcf7_init', array(&$this, 'contactFormAddRecaptchaV3Input') );
+                add_filter( 'wpcf7_spam', array(&$this, 'contactFormVerifyResponse'), 9, 2 );
             }              
         }
-        function ContactFormAddRecaptchaV3Input() {
+        function contactFormAddRecaptchaV3Input() {
             wpcf7_add_form_tag('recaptchav3', array(&$this, 'getRecaptchaV3Input') );
         }        
-        function ContactFormVerifyResponse( $spam, $submission ) {
+        function contactFormVerifyResponse( $spam, $submission ) {
             if ( $spam ) {
                 return $spam;
             }
@@ -55,14 +64,14 @@
         }
 
         //Comments
-        function CommentsConfigureRecaptchaV3 () {
-            add_action( 'comment_form', array(&$this, 'CommentsShowRecaptchaV3Input') );
-            add_filter( 'wp_insert_comment', array(&$this, 'CommentsVerifyResponse') );
+        function commentsConfigureRecaptchaV3 () {
+            add_action( 'comment_form', array(&$this, 'commentsShowRecaptchaV3Input') );
+            add_filter( 'wp_insert_comment', array(&$this, 'commentsVerifyResponse') );
         }
-        function CommentsShowRecaptchaV3Input() {
+        function commentsShowRecaptchaV3Input() {
             $this->getRecaptchaV3Input(true);
         }
-        function CommentsVerifyResponse($comment_id) {
+        function commentsVerifyResponse($comment_id) {
             $token = isset( $_POST['g-recaptcha-response'] )
                 ? trim( $_POST['g-recaptcha-response'] ) : '';
 
@@ -72,7 +81,6 @@
             } 
         }
 
-        
         //Panel Config
         function registerConfigCm() {
             $this->createOptions();
@@ -158,6 +166,23 @@
             }
 
             return false;
+        }
+        function plugin_add_settings_link( $links ) {
+            $settings_link = '<a href="options-general.php?page='.$this->pageSlug.'">' . __( 'Settings' ) . '</a>';
+            $links[] = $settings_link;
+            
+            return $links;
+        }
+        function adminNotice() {
+            global $pagenow;
+
+            if ( !$this->haveCredentials() && ( $pagenow == 'index.php' || $pagenow == 'plugins.php' ) ) {
+                
+                echo '<div class="notice notice-error is-dismissible">
+                        <p>Você deve preencher as credenciais para começar a usar o reCAPTCHA no site.</p>
+                     </div>';
+
+            }     
         }
 
         //User scripts
