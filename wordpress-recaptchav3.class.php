@@ -15,7 +15,7 @@
             add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts') );
             add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts') );
             add_action( 'admin_init', array(&$this, 'adminNotice') );
-            add_filter( "plugin_action_links_".WORDPRESS_RECAPTCHA_V3_BASENAME, array(&$this, 'plugin_add_settings_link'), 10, 1 );
+            add_filter( "plugin_action_links_".WORDPRESS_RECAPTCHA_V3_BASENAME, array(&$this, 'addSettingsLinkPluginsPage'), 10, 1 );
             
 
             $this->configureAllForms();
@@ -167,8 +167,8 @@
 
             return false;
         }
-        function plugin_add_settings_link( $links ) {
-            $settings_link = '<a href="options-general.php?page='.$this->pageSlug.'">' . __( 'Settings' ) . '</a>';
+        function addSettingsLinkPluginsPage( $links ) {
+            $settings_link = '<a href="'.$this->getSettingsLink().'">' . __( 'Settings' ) . '</a>';
             $links[] = $settings_link;
             
             return $links;
@@ -179,10 +179,13 @@
             if ( !$this->haveCredentials() && ( $pagenow == 'index.php' || $pagenow == 'plugins.php' ) ) {
                 
                 echo '<div class="notice notice-error is-dismissible">
-                        <p>Você deve preencher as credenciais para começar a usar o reCAPTCHA no site.</p>
+                        <p>Você deve preencher as credenciais <a href="'.$this->getSettingsLink().'">neste link</a> para começar a usar o reCAPTCHA no site.</p>
                      </div>';
 
             }     
+        }
+        function getSettingsLink() {
+            return get_admin_url()."options-general.php?page=".$this->pageSlug;
         }
 
         //User scripts
