@@ -10,31 +10,29 @@
         private $optionSecretKeySlug = 'recaptchav3-secretkey';
 
         function __construct() {            
-            add_action('admin_menu', array(&$this, 'registerConfigCm'));
-            add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts'));
-            add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts'));
+            add_action( 'admin_menu', array(&$this, 'registerConfigCm') );
+            add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts') );
+            add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts') );
 
             $this->ContactFormConfigureRecaptchaV3();
+            $this->CommentsConfigureRecaptchaV3();
         }        
 
         //Contact Form
         function ContactFormConfigureRecaptchaV3() {
-            add_action( 'wpcf7_init', array(&$this, 'ContactFormAddRecaptchaV3Tag') );
+            add_action( 'wpcf7_init', array(&$this, 'ContactFormAddRecaptchaV3Input') );
             add_filter( 'wpcf7_spam', array(&$this, 'ContactFormVerifyResponse'), 9, 2 );
         }
-        function ContactFormAddRecaptchaV3Tag() {
-            wpcf7_add_form_tag('recaptchav3', array(&$this, 'ContactFormShowRecaptchaV3Tag') );
-        }
-        function ContactFormShowRecaptchaV3Tag() {
-            return '<input type="hidden" class="g-recaptcha-response" name="_wpcf7_recaptcha_response">';
-        } 
+        function ContactFormAddRecaptchaV3Input() {
+            wpcf7_add_form_tag('recaptchav3', array(&$this, 'getRecaptchaV3Input') );
+        }        
         function ContactFormVerifyResponse( $spam, $submission ) {
             if ( $spam ) {
                 return $spam;
             }
 
-            $token = isset( $_POST['_wpcf7_recaptcha_response'] )
-                ? trim( $_POST['_wpcf7_recaptcha_response'] ) : '';
+            $token = isset( $_POST['g-recaptcha-response'] )
+                ? trim( $_POST['g-recaptcha-response'] ) : '';
 
             if ( $this->verifyReCaptcha( $token ) ) { // Human
                 $spam = false;
@@ -43,7 +41,7 @@
                 $submission->add_spam_log( array(
                     'agent' => 'recaptcha',
                     'reason' => __(
-                        'reCAPTCHA response token is invalid.',
+                        'reCAPTCHA invalido.',
                         'contact-form-7'
                     ),
                 ) );
@@ -52,6 +50,25 @@
             return $spam;
         }
 
+        //Comments
+        function CommentsConfigureRecaptchaV3 () {
+            add_action( 'comment_form', array(&$this, 'CommentsShowRecaptchaV3Input') );
+            add_filter( 'wp_insert_comment', array(&$this, 'CommentsVerifyResponse') );
+        }
+        function CommentsShowRecaptchaV3Input() {
+            $this->getRecaptchaV3Input(true);
+        }
+        function CommentsVerifyResponse($comment_id) {
+            $token = isset( $_POST['g-recaptcha-response'] )
+                ? trim( $_POST['g-recaptcha-response'] ) : '';
+
+            if ( ! $this->verifyReCaptcha( $token ) ) { // Bot
+                wp_set_comment_status( $comment_id, 'spam' );        
+                wp_die( '<strong>Erro:</strong> reCAPTCHA invalido.', 'reCAPTCHA error', array("back_link" => true) );
+            } 
+        }
+
+        
         //Panel Config
         function registerConfigCm() {
             $this->createOptions();
@@ -157,7 +174,7 @@
             }
         }
         
-        //Service
+        //Services
         function verifyReCaptcha($recaptchaCode){
             $postdata = http_build_query(["secret"=>$this->getSecretKeyOption(),"response"=>$recaptchaCode]);
 
@@ -175,5 +192,14 @@
 
             return $check->success;
         }
+        function getRecaptchaV3Input($echo = false) {
+            $tag = '<input type="hidden" class="g-recaptcha-response" name="g-recaptcha-response">';
+
+            if ($echo) {
+                echo $tag;
+            }
+
+            return $tag;
+        } 
 
     }
