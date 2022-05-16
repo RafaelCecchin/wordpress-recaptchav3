@@ -19,9 +19,11 @@
         }        
 
         //Contact Form
-        function ContactFormConfigureRecaptchaV3() {
-            add_action( 'wpcf7_init', array(&$this, 'ContactFormAddRecaptchaV3Input') );
-            add_filter( 'wpcf7_spam', array(&$this, 'ContactFormVerifyResponse'), 9, 2 );
+        function ContactFormConfigureRecaptchaV3() {  
+            if (defined( 'WPCF7_PLUGIN' )) {
+                add_action( 'wpcf7_init', array(&$this, 'ContactFormAddRecaptchaV3Input') );
+                add_filter( 'wpcf7_spam', array(&$this, 'ContactFormVerifyResponse'), 9, 2 );
+            }              
         }
         function ContactFormAddRecaptchaV3Input() {
             wpcf7_add_form_tag('recaptchav3', array(&$this, 'getRecaptchaV3Input') );
