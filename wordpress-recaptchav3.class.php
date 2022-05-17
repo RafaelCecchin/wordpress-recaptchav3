@@ -8,25 +8,32 @@
         
         private $optionSiteKeySlug = 'recaptchav3-sitekey';
         private $optionSecretKeySlug = 'recaptchav3-secretkey';
+        private $optionShowBadge = 'recaptchav3-showbadge';
 
         function __construct() {            
             
             add_action( 'admin_menu', array(&$this, 'registerConfigCm') );
             add_action( 'admin_enqueue_scripts', array(&$this, 'adminEnqueueScripts') );
-            add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts') );
             add_action( 'admin_init', array(&$this, 'adminNotice') );
-            add_filter( "plugin_action_links_".WORDPRESS_RECAPTCHA_V3_BASENAME, array(&$this, 'addSettingsLinkPluginsPage'), 10, 1 );
-            
+            add_filter( 'plugin_action_links_'.WORDPRESS_RECAPTCHA_V3_BASENAME, array(&$this, 'addSettingsLinkPluginsPage'), 10, 1 );
 
             $this->configureAllForms();
+
         }        
 
         //Init
         function configureAllForms() {
+            
             if ($this->haveCredentials()) {
+
+                add_action( 'wp_enqueue_scripts', array(&$this, 'userEnqueueScripts') );
+                add_action( 'wp_footer', array(&$this, 'hideRecaptcha') );
+
                 $this->contactFormConfigureRecaptchaV3();
                 $this->commentsConfigureRecaptchaV3();
+
             }            
+
         }
         
         //Contact Form
@@ -131,12 +138,27 @@
                     'label_for' => $this->optionSecretKeySlug
                 )
             );
+
+            register_setting( $this->groupSlug, $this->optionShowBadge );
+            add_settings_field(
+                $this->optionShowBadge,
+                "Show badge",
+                array($this, 'showBadgeCheckbox'),
+                $this->pageSlug,
+                $this->sectionSlug,         
+                array( 
+                    'label_for' => $this->optionShowBadge
+                )
+            );
         }
         function showSiteKeyTextField() {
             $this->generateTextField( $this->optionSiteKeySlug );
         }
         function showSecretKeyTextField() {
             $this->generateTextField( $this->optionSecretKeySlug );
+        }
+        function showBadgeCheckbox() {
+            $this->generateCheckboxField( $this->optionShowBadge );
         }
         function generateTextField( $optionName ) {
             $value = esc_attr( get_option( $optionName ) );
@@ -146,6 +168,16 @@
                 $optionName, 
                 $optionName, 
                 esc_attr( $value )
+            );
+        }
+        function generateCheckboxField( $optionName ) {
+            $value = esc_attr( get_option( $optionName ) );
+
+            printf(
+                '<input type="checkbox" id="%s" name="%s" %s/>',
+                $optionName, 
+                $optionName, 
+                esc_attr( $value ) == true ? "checked" : ""
             );
         }
         function adminEnqueueScripts() {
@@ -161,6 +193,9 @@
         }
         function getSecretKeyOption() {
             return esc_attr( get_option( $this->optionSecretKeySlug ) );
+        }
+        function getShowBadgeOption() {
+            return esc_attr( get_option( $this->optionShowBadge ) );
         }
         function haveCredentials() {
             if ( $this->getSiteKeyOption() && $this->getSecretKeyOption() ) {
@@ -206,6 +241,20 @@
                 wp_enqueue_script( 'recaptchav3-js', 'https://www.google.com/recaptcha/api.js?render='.$this->getSiteKeyOption(), array(), "1.0.0", false );
                 wp_enqueue_script( 'user-recaptchav3-js', WORDPRESS_RECAPTCHA_V3_URL . 'assets/script/user-recaptchav3-script.js', array('recaptchav3-js'), "1.0.0", true );
             }
+        }
+        function hideRecaptcha() {
+
+            if ( !$this->getShowBadgeOption() ) {
+
+                echo '
+
+                    <style>
+                        .grecaptcha-badge { opacity: 0; visibility: hidden; }
+                    </style>
+                    
+                    ';
+            }
+
         }
         
         //Services
